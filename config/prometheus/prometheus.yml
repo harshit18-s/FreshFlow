@@ -1,0 +1,41 @@
+# ============================================================================
+# FreshFlow AI — Prometheus Configuration
+# ============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # --- Prometheus self-monitoring ---
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # --- FastAPI application metrics ---
+  - job_name: "fastapi"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["fastapi:8000"]
+        labels:
+          service: "freshflow-api"
+
+  # --- Airflow metrics (if StatsD exporter is configured) ---
+  # - job_name: "airflow"
+  #   static_configs:
+  #     - targets: ["airflow-webserver:8080"]
+
+  # --- PostgreSQL exporter (optional — add postgres-exporter service) ---
+  # - job_name: "postgres"
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+
+  # --- MinIO metrics ---
+  - job_name: "minio"
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+        labels:
+          service: "freshflow-minio"

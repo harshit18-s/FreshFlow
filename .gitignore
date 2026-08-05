@@ -1,0 +1,117 @@
+# ============================================================================
+# FreshFlow AI — .gitignore
+# ============================================================================
+
+# ---------- Python ----------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+
+# ---------- Virtual environments --------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- Environment & secrets -------------------------------------------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---------- IDE & editors ---------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---------- OS files --------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# ---------- Data files (large, generated) -----------------------------------
+data/raw/
+data/bronze/
+data/silver/
+data/gold/
+data/sample/
+data/quarantine/
+*.csv
+*.parquet
+*.delta/
+*.avro
+!data/README.md
+
+# ---------- Models (binary, large) ------------------------------------------
+models/*.pkl
+models/*.joblib
+models/*.onnx
+models/*.pmml
+models/*.h5
+
+# ---------- Reports (generated) ---------------------------------------------
+reports/
+
+# ---------- Logs ------------------------------------------------------------
+logs/
+*.log
+
+# ---------- Docker ----------------------------------------------------------
+docker-compose.override.yml
+
+# ---------- Airflow ---------------------------------------------------------
+airflow_logs/
+airflow/logs/
+
+# ---------- MLflow ----------------------------------------------------------
+mlruns/
+mlartifacts/
+
+# ---------- dbt -------------------------------------------------------------
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# ---------- Spark -----------------------------------------------------------
+spark-warehouse/
+metastore_db/
+derby.log
+
+# ---------- Testing & coverage ----------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ---------- Linting & type-checking -----------------------------------------
+.mypy_cache/
+.ruff_cache/
+
+# ---------- Jupyter ---------------------------------------------------------
+.ipynb_checkpoints/
+
+# ---------- Power BI --------------------------------------------------------
+*.pbix.tmp
+*.pbit.tmp
+
+# ---------- Great Expectations ----------------------------------------------
+great_expectations/uncommitted/
+
+# ---------- Misc ------------------------------------------------------------
+*.bak
+*.tmp
+*.temp

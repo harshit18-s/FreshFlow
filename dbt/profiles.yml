@@ -1,0 +1,12 @@
+freshflow_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      threads: 4
+      host: postgres
+      port: 5432
+      user: freshflow_admin
+      pass: freshflow_dev_2026
+      dbname: freshflow_db
+      schema: gold

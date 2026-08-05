@@ -1,0 +1,23 @@
+# ============================================================================
+# FreshFlow AI — Data Pipeline Dependencies
+# ============================================================================
+# Install: pip install -r requirements/data.txt
+# ============================================================================
+
+-r base.txt
+
+# --- Spark ------------------------------------------------------------------
+pyspark>=3.5
+delta-spark>=3.0
+
+# --- dbt (data build tool) --------------------------------------------------
+dbt-core>=1.8
+dbt-postgres>=1.8
+
+# --- Data quality -----------------------------------------------------------
+great-expectations>=0.18
+
+# --- Orchestration ----------------------------------------------------------
+# NOTE: apache-airflow is installed inside the Docker container image.
+# Uncomment below ONLY if you need local Airflow CLI access:
+# apache-airflow>=2.10

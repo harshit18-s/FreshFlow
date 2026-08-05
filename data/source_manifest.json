@@ -1,0 +1,87 @@
+{
+  "dataset": "Dingdong-Inc/FreshRetailNet-50K",
+  "downloaded_at": "2026-07-21T04:23:00.671229+00:00",
+  "download_tool": "huggingface_hub",
+  "total_files": 13,
+  "total_bytes": 114885677,
+  "files": [
+    {
+      "filename": ".gitignore",
+      "relative_path": ".cache\\huggingface\\.gitignore",
+      "size_bytes": 1,
+      "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+    },
+    {
+      "filename": "CACHEDIR.TAG",
+      "relative_path": ".cache\\huggingface\\CACHEDIR.TAG",
+      "size_bytes": 195,
+      "sha256": "e8893e2dcb3f4545ef67a0a5b7b769113d38eef1aa61c7c7ba14659b02af955f"
+    },
+    {
+      "filename": ".gitattributes.metadata",
+      "relative_path": ".cache\\huggingface\\download\\.gitattributes.metadata",
+      "size_bytes": 104,
+      "sha256": "63891a5a870b9a9ee8a8f1c226052523582bc9f8830a4a102c6227c5bbeb6a11"
+    },
+    {
+      "filename": ".gitignore.metadata",
+      "relative_path": ".cache\\huggingface\\download\\.gitignore.metadata",
+      "size_bytes": 104,
+      "sha256": "07c9518dbcdc4291f81db4c9d401ac7186919c21e7c5fb5f686c66fc773f282e"
+    },
+    {
+      "filename": "eval.parquet.metadata",
+      "relative_path": ".cache\\huggingface\\download\\data\\eval.parquet.metadata",
+      "size_bytes": 127,
+      "sha256": "b7a55095aa3721a1e4c99a37737623e9dabc397e02ff8a3b43fcc5bf7232e7e8"
+    },
+    {
+      "filename": "train.parquet.metadata",
+      "relative_path": ".cache\\huggingface\\download\\data\\train.parquet.metadata",
+      "size_bytes": 128,
+      "sha256": "049b19c37a8dbfdd8ff88f3cb24741576b1ed9c2f1b14bc1f79f3e357b4dcde3"
+    },
+    {
+      "filename": "README.md.metadata",
+      "relative_path": ".cache\\huggingface\\download\\README.md.metadata",
+      "size_bytes": 103,
+      "sha256": "640be6a35ff099d8ebb6cb25843846132ee1d90d1c0ec8e404f2e2925204ce5f"
+    },
+    {
+      "filename": "08c1fab7f9257bc73679d415d65d644165d351d4.json",
+      "relative_path": ".cache\\huggingface\\trees\\08c1fab7f9257bc73679d415d65d644165d351d4.json",
+      "size_bytes": 964,
+      "sha256": "88dc8342584d9828e42f04a5eecab1cc7d85c4d12be77d93fc88030c973bda08"
+    },
+    {
+      "filename": ".gitattributes",
+      "relative_path": ".gitattributes",
+      "size_bytes": 2570,
+      "sha256": "e4d0ebd3fe6bd5490da38d0bc76a4fb6a6581b5a394274f77461fc6a3deb737b"
+    },
+    {
+      "filename": ".gitignore",
+      "relative_path": ".gitignore",
+      "size_bytes": 99,
+      "sha256": "1e15ee344a6cd92c2ac9936353e0fe5a409ec5057042a8ad6824b92dde01f33c"
+    },
+    {
+      "filename": "eval.parquet",
+      "relative_path": "data\\eval.parquet",
+      "size_bytes": 8440124,
+      "sha256": "1b118840664280c6b88bffc84c80ee1f54c05d911e354b7599e5da10995e960e"
+    },
+    {
+      "filename": "train.parquet",
+      "relative_path": "data\\train.parquet",
+      "size_bytes": 106436287,
+      "sha256": "6706832db892bbae4969c19d87e07975d2543d2ba7d7d4756360654785de5a3d"
+    },
+    {
+      "filename": "README.md",
+      "relative_path": "README.md",
+      "size_bytes": 4871,
+      "sha256": "6e2e9bef4562855b7ea0ffec30d2cb5de485f87f33856d3dcd084eb0b71ddec9"
+    }
+  ]
+}

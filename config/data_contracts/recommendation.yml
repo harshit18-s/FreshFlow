@@ -1,0 +1,254 @@
+# ============================================================================
+# FreshFlow AI — Data Contract: Recommendation Output
+# ============================================================================
+# Dataset:       fact_recommendation
+# Grain:         One row per store × product × recommendation action × day
+# Owner:         ML Engineering
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+contract:
+  name: recommendation_output
+  description: >
+    Schema and validation rules for the recommendation engine output.
+    Each row represents a single actionable recommendation for a specific
+    store × product combination on a given day. Recommendations are
+    generated for products identified as at-risk by the stockout classifier
+    or approaching simulated shelf-life expiry.
+  version: "0.1.0"
+
+# ----------------------------------------------------------------------------
+# Grain
+# ----------------------------------------------------------------------------
+grain:
+  description: "One row per store × product × action × day"
+  keys:
+    - store_id
+    - product_id
+    - dt
+    - action_type
+
+# ----------------------------------------------------------------------------
+# Primary Key
+# ----------------------------------------------------------------------------
+primary_key:
+  - store_id
+  - product_id
+  - dt
+  - action_type
+
+# ----------------------------------------------------------------------------
+# Required Columns
+# ----------------------------------------------------------------------------
+required_columns:
+
+  - name: store_id
+    type: integer
+    nullable: false
+    description: "Store receiving the recommendation"
+
+  - name: product_id
+    type: integer
+    nullable: false
+    description: "Product the recommendation applies to"
+
+  - name: dt
+    type: date
+    nullable: false
+    description: "Date the recommendation is issued for"
+
+  - name: action_type
+    type: string
+    nullable: false
+    description: "Recommended action category"
+
+  - name: urgency
+    type: string
+    nullable: false
+    description: "Urgency classification of the recommendation"
+
+  - name: reason_code
+    type: string
+    nullable: false
+    description: "Machine-readable reason for the recommendation"
+
+  - name: reason_text
+    type: string
+    nullable: false
+    description: "Human-readable explanation of why this recommendation was generated"
+
+  - name: suggested_order_qty
+    type: float
+    nullable: true
+    description: "Recommended order quantity (only for 'replenish' actions; null otherwise)"
+
+  - name: suggested_markdown_pct
+    type: float
+    nullable: true
+    description: "Recommended markdown percentage (only for 'markdown' actions; null otherwise)"
+
+  - name: stockout_probability
+    type: float
+    nullable: false
+    description: "The stockout risk probability that triggered this recommendation"
+
+  - name: forecast_q90
+    type: float
+    nullable: true
+    description: "90th percentile demand forecast used to size the recommendation"
+
+  - name: confidence_score
+    type: float
+    nullable: false
+    description: "Model confidence in this recommendation (0.0–1.0)"
+
+  - name: estimated_impact
+    type: float
+    nullable: true
+    description: "SIMULATED — Estimated cost avoidance if recommendation is followed"
+
+  - name: policy_name
+    type: string
+    nullable: false
+    description: "Inventory policy used to generate this recommendation"
+
+  - name: model_name
+    type: string
+    nullable: false
+    description: "ML model(s) that produced the inputs for this recommendation"
+
+  - name: generated_at
+    type: timestamp
+    nullable: false
+    description: "Timestamp when the recommendation was generated"
+
+# ----------------------------------------------------------------------------
+# Validation Rules
+# ----------------------------------------------------------------------------
+validation_rules:
+
+  # --- Action type accepted values ---
+  - rule: accepted_values
+    column: action_type
+    allowed_values:
+      - "replenish"       # Order more stock
+      - "markdown"        # Reduce price to clear excess / approaching expiry
+      - "monitor"         # Watch closely but no immediate action
+      - "escalate"        # Requires human review / manager approval
+    description: "action_type must be one of the defined action categories"
+    severity: error
+
+  # --- Urgency accepted values ---
+  - rule: accepted_values
+    column: urgency
+    allowed_values:
+      - "routine"         # Standard priority — action within normal cycle
+      - "elevated"        # Above normal — act within 4–8 hours
+      - "urgent"          # Critical — act within 1–2 hours
+    description: "urgency must be one of the defined urgency levels"
+    severity: error
+
+  # --- Reason code accepted values ---
+  - rule: accepted_values
+    column: reason_code
+    allowed_values:
+      - "stockout_high_risk"       # High predicted stockout probability
+      - "stockout_moderate_risk"   # Moderate predicted stockout probability
+      - "approaching_expiry"       # Product nearing simulated shelf-life end
+      - "excess_inventory"         # Forecast suggests over-stock situation
+      - "demand_spike_predicted"   # Forecast shows unusual demand increase
+      - "chronic_stockout"         # Product has repeated stockout history
+    description: "reason_code must be one of the defined reason codes"
+    severity: error
+
+  # --- Replenish action must have order quantity ---
+  - rule: conditional_not_null
+    condition: "action_type = 'replenish'"
+    column: suggested_order_qty
+    description: "Replenish recommendations must include a suggested_order_qty"
+    severity: error
+
+  # --- Order quantity must be positive when present ---
+  - rule: conditional_positive
+    condition: "suggested_order_qty IS NOT NULL"
+    column: suggested_order_qty
+    min_value: 0.0
+    description: "suggested_order_qty must be >= 0 when provided"
+    severity: error
+
+  # --- Markdown action must have markdown percentage ---
+  - rule: conditional_not_null
+    condition: "action_type = 'markdown'"
+    column: suggested_markdown_pct
+    description: "Markdown recommendations must include a suggested_markdown_pct"
+    severity: error
+
+  # --- Markdown percentage range ---
+  - rule: conditional_range
+    condition: "suggested_markdown_pct IS NOT NULL"
+    column: suggested_markdown_pct
+    min_value: 0.01
+    max_value: 0.90
+    description: "Markdown percentage should be between 1% and 90%"
+    severity: warning
+
+  # --- Stockout probability range ---
+  - rule: value_range
+    column: stockout_probability
+    min_value: 0.0
+    max_value: 1.0
+    description: "Stockout probability must be a valid probability"
+    severity: error
+
+  # --- Confidence score range ---
+  - rule: value_range
+    column: confidence_score
+    min_value: 0.0
+    max_value: 1.0
+    description: "Confidence score must be between 0 and 1"
+    severity: error
+
+  # --- Urgency consistency with stockout probability ---
+  - rule: urgency_consistency
+    description: >
+      Urgency should be directionally consistent with stockout_probability:
+        - 'urgent' should generally correspond to stockout_probability >= 0.70
+        - 'routine' should generally correspond to stockout_probability < 0.40
+      This is a soft guideline — other factors (shelf life, product importance) may override.
+    severity: warning
+
+  # --- No duplicate recommendations ---
+  - rule: unique_composite_key
+    columns: [store_id, product_id, dt, action_type]
+    description: "Only one recommendation per action_type per store × product × day"
+    severity: error
+
+# ----------------------------------------------------------------------------
+# Business Rules
+# ----------------------------------------------------------------------------
+business_rules:
+
+  - rule: max_actions_per_product
+    description: >
+      A single store × product × day should have at most 2 recommendations
+      (e.g., one 'replenish' and one 'markdown'). More than 2 indicates
+      possible recommendation engine error.
+    max_count: 2
+    group_by: [store_id, product_id, dt]
+    severity: warning
+
+  - rule: escalation_requires_urgency
+    description: >
+      'escalate' action_type should always have urgency = 'urgent' or 'elevated'.
+      A routine escalation is contradictory.
+    condition: "action_type = 'escalate' IMPLIES urgency IN ('urgent', 'elevated')"
+    severity: warning
+
+# ----------------------------------------------------------------------------
+# SLA
+# ----------------------------------------------------------------------------
+sla:
+  min_coverage: 0.95            # At least 95% of at-risk products must receive recommendations
+  max_stale_hours: 24           # Recommendations must not be older than 24 hours
+  max_generation_time_seconds: 300  # Recommendation batch should complete within 5 minutes

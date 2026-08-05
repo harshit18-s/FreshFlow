@@ -1,0 +1,196 @@
+# ============================================================================
+# FreshFlow AI — Simulation Config: Product Economics
+# ============================================================================
+# Purpose:       Define rules for generating simulated commercial fields
+#                (prices, costs, shelf-life, margins) that DO NOT exist in
+#                the FreshRetailNet-50K source data.
+#
+# WARNING:       All values generated from this config are SIMULATED.
+#                They must be clearly labeled as such in all downstream
+#                tables, KPIs, dashboards, and API responses.
+#
+# Owner:         Data Science / Product
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+simulation:
+  name: product_economics
+  version: "0.1.0"
+  description: >
+    Rules for assigning simulated commercial attributes to products.
+    Products are assigned to categories based on product_id ranges,
+    then category-level distributions are used to generate prices,
+    costs, shelf-life, and other economic parameters.
+
+# ----------------------------------------------------------------------------
+# Reproducibility
+# ----------------------------------------------------------------------------
+random_seed: 42
+
+# ----------------------------------------------------------------------------
+# Category Assignment
+# ----------------------------------------------------------------------------
+# Products are assigned to perishability categories based on product_id.
+# This is an arbitrary but deterministic assignment for simulation purposes.
+# In a real system, category would come from the product master.
+# ----------------------------------------------------------------------------
+categories:
+
+  highly_perishable:
+    description: >
+      Fresh items with very short shelf life: dairy, bakery, prepared foods,
+      fresh-cut produce, deli items, sushi, fresh juice.
+    product_id_range:
+      min: 1
+      max: 289          # ~1/3 of 865 products
+    shelf_life:
+      unit: hours
+      min: 24
+      max: 72
+      distribution: uniform
+    price:
+      unit: currency_units  # Simulated, no real currency
+      min: 2.00
+      max: 15.00
+      distribution: uniform
+    cost_ratio:
+      description: "Unit cost as a fraction of unit price"
+      min: 0.55
+      max: 0.70
+      distribution: uniform
+    spoilage_cost:
+      description: "Cost to dispose of one expired unit (fraction of unit cost)"
+      rate: 0.10         # 10% of unit cost for disposal
+    holding_cost:
+      description: "Daily cost to hold one unit in inventory"
+      rate_per_day: 0.03  # 3% of unit cost per day
+    markdown_trigger:
+      description: "Hours before expiry to trigger markdown recommendation"
+      hours_before_expiry: 12
+
+  moderately_perishable:
+    description: >
+      Items with moderate shelf life: yogurt, cheese, packaged salads,
+      fresh pasta, fresh herbs, some beverages.
+    product_id_range:
+      min: 290
+      max: 577           # ~1/3 of 865 products
+    shelf_life:
+      unit: days
+      min: 3
+      max: 7
+      distribution: uniform
+    price:
+      unit: currency_units
+      min: 3.00
+      max: 20.00
+      distribution: uniform
+    cost_ratio:
+      min: 0.50
+      max: 0.65
+      distribution: uniform
+    spoilage_cost:
+      rate: 0.08          # 8% of unit cost
+    holding_cost:
+      rate_per_day: 0.02   # 2% of unit cost per day
+    markdown_trigger:
+      hours_before_expiry: 24
+
+  longer_life:
+    description: >
+      Items with longer shelf life but still perishable: UHT milk,
+      canned goods near expiry, packaged meats, frozen items approaching
+      best-before date.
+    product_id_range:
+      min: 578
+      max: 865            # ~1/3 of 865 products
+    shelf_life:
+      unit: days
+      min: 7
+      max: 14
+      distribution: uniform
+    price:
+      unit: currency_units
+      min: 1.50
+      max: 25.00
+      distribution: uniform
+    cost_ratio:
+      min: 0.45
+      max: 0.60
+      distribution: uniform
+    spoilage_cost:
+      rate: 0.05          # 5% of unit cost
+    holding_cost:
+      rate_per_day: 0.01   # 1% of unit cost per day
+    markdown_trigger:
+      hours_before_expiry: 48
+
+# ----------------------------------------------------------------------------
+# Lead Time Simulation
+# ----------------------------------------------------------------------------
+lead_times:
+  description: >
+    Simulated supplier lead times by category. In a real system, lead times
+    would come from supplier master data and vary by supplier, product, and
+    delivery schedule.
+
+  highly_perishable:
+    unit: hours
+    min: 4
+    max: 12
+    distribution: uniform
+    description: "Fresh items require rapid, often daily deliveries"
+
+  moderately_perishable:
+    unit: hours
+    min: 12
+    max: 48
+    distribution: uniform
+    description: "Moderate-shelf items typically delivered every 1–2 days"
+
+  longer_life:
+    unit: hours
+    min: 24
+    max: 72
+    distribution: uniform
+    description: "Longer-life items can tolerate 1–3 day lead times"
+
+# ----------------------------------------------------------------------------
+# Emergency Replenishment
+# ----------------------------------------------------------------------------
+emergency_replenishment:
+  description: >
+    Cost parameters for unscheduled rush deliveries triggered when a
+    stockout is imminent and the regular delivery cycle is too slow.
+  surcharge_per_incident: 50.00   # Flat surcharge per emergency order (simulated currency)
+  surcharge_unit: currency_units
+  max_per_store_per_day: 3        # Cap on emergency orders per store per day
+
+# ----------------------------------------------------------------------------
+# Derived Fields
+# ----------------------------------------------------------------------------
+# The following fields are computed from the above parameters during the
+# Silver → Gold transformation or ML feature engineering step:
+#
+#   simulated_unit_price:      Sampled from price distribution per category
+#   simulated_unit_cost:       simulated_unit_price × cost_ratio (sampled)
+#   simulated_margin:          simulated_unit_price − simulated_unit_cost
+#   simulated_shelf_life_hours: Sampled from shelf_life distribution
+#   simulated_lead_time_hours:  Sampled from lead_time distribution
+#   simulated_spoilage_cost:    simulated_unit_cost × spoilage_cost.rate
+#   simulated_holding_cost_day: simulated_unit_cost × holding_cost.rate_per_day
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# Version History
+# ----------------------------------------------------------------------------
+changelog:
+  - version: "0.1.0"
+    date: "2026-07-16"
+    author: "FreshFlow AI Team"
+    changes:
+      - "Initial simulation configuration"
+      - "Three-category perishability model"
+      - "Product-ID-based category assignment"
+      - "Uniform distributions for all sampled parameters"

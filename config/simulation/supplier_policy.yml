@@ -1,0 +1,173 @@
+# ============================================================================
+# FreshFlow AI — Simulation Config: Supplier Policy
+# ============================================================================
+# Purpose:       Define simulated supplier delivery schedules, order
+#                constraints, and replenishment policies. These DO NOT
+#                exist in the source data and are entirely simulated.
+#
+# WARNING:       All policies defined here are SIMULATED scenarios for
+#                what-if analysis. They do not represent real supplier
+#                agreements.
+#
+# Owner:         Data Science / Supply Chain
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+simulation:
+  name: supplier_policy
+  version: "0.1.0"
+  description: >
+    Simulated supplier and replenishment policies used by the policy
+    simulation engine to evaluate different ordering strategies.
+    Multiple policies can be compared in what-if scenarios.
+
+# ----------------------------------------------------------------------------
+# Reproducibility
+# ----------------------------------------------------------------------------
+random_seed: 42
+
+# ----------------------------------------------------------------------------
+# Delivery Schedule Templates
+# ----------------------------------------------------------------------------
+delivery_schedules:
+
+  daily:
+    description: "Daily delivery — typical for highly perishable items"
+    frequency: daily
+    delivery_days: [0, 1, 2, 3, 4, 5, 6]  # 0=Monday, 6=Sunday
+    delivery_window:
+      earliest_hour: 5   # Deliveries arrive between 05:00–07:00
+      latest_hour: 7
+    applies_to: highly_perishable
+
+  three_per_week:
+    description: "Three deliveries per week — Mon, Wed, Fri"
+    frequency: three_per_week
+    delivery_days: [0, 2, 4]  # Monday, Wednesday, Friday
+    delivery_window:
+      earliest_hour: 5
+      latest_hour: 8
+    applies_to: moderately_perishable
+
+  twice_per_week:
+    description: "Twice-weekly delivery — Mon, Thu"
+    frequency: twice_per_week
+    delivery_days: [0, 3]  # Monday, Thursday
+    delivery_window:
+      earliest_hour: 4
+      latest_hour: 8
+    applies_to: longer_life
+
+# ----------------------------------------------------------------------------
+# Order Constraints
+# ----------------------------------------------------------------------------
+order_constraints:
+
+  minimum_order_quantity:
+    description: "Minimum units per order line (to justify delivery cost)"
+    highly_perishable: 1.0      # Low MOQ for fresh — better to order small
+    moderately_perishable: 2.0
+    longer_life: 5.0
+
+  maximum_order_quantity:
+    description: "Maximum units per order line (shelf-space / storage constraint)"
+    highly_perishable: 50.0
+    moderately_perishable: 100.0
+    longer_life: 200.0
+
+  order_rounding:
+    description: "Order quantities rounded to this increment"
+    increment: 1.0  # Round to whole units (simulated)
+
+  order_cutoff:
+    description: "Orders must be placed this many hours before delivery"
+    hours_before_delivery: 12
+
+# ----------------------------------------------------------------------------
+# Replenishment Policies (for simulation / what-if)
+# ----------------------------------------------------------------------------
+replenishment_policies:
+
+  conservative_95:
+    description: >
+      Conservative policy targeting 95% service level.
+      Orders based on P90 forecast quantile. Accepts higher holding cost
+      to minimize stockout risk.
+    target_service_level: 0.95
+    forecast_quantile: 0.90
+    safety_stock_method: quantile_based
+    safety_stock_description: >
+      Safety stock = forecast_q90 − forecast_median.
+      Order-up-to level = forecast_q90 × lead_time_coverage.
+    reorder_point_method: forecast_q90_over_lead_time
+    review_frequency: per_delivery
+
+  balanced_97:
+    description: >
+      Balanced policy targeting 97% service level.
+      Uses P95 forecast quantile. Moderate balance between stockout
+      and waste risk.
+    target_service_level: 0.97
+    forecast_quantile: 0.95
+    safety_stock_method: quantile_based
+    reorder_point_method: forecast_q95_over_lead_time
+    review_frequency: per_delivery
+
+  aggressive_99:
+    description: >
+      Aggressive policy targeting 99% service level.
+      Uses high safety stock multiplier. Accepts higher spoilage risk
+      to virtually eliminate stockouts.
+    target_service_level: 0.99
+    forecast_quantile: 0.99
+    safety_stock_method: quantile_based
+    reorder_point_method: forecast_q99_over_lead_time
+    review_frequency: per_delivery
+
+  lean_90:
+    description: >
+      Lean policy targeting 90% service level.
+      Minimizes inventory and waste at the cost of more frequent stockouts.
+      Suitable for low-margin, high-spoilage categories.
+    target_service_level: 0.90
+    forecast_quantile: 0.75
+    safety_stock_method: quantile_based
+    reorder_point_method: forecast_q75_over_lead_time
+    review_frequency: per_delivery
+
+# ----------------------------------------------------------------------------
+# Policy Simulation Parameters
+# ----------------------------------------------------------------------------
+policy_simulation:
+
+  description: >
+    Parameters controlling the what-if simulation engine that evaluates
+    each replenishment policy against historical demand.
+
+  simulation_horizon_days: 14      # Simulate 14 days forward
+  warm_up_days: 7                  # Discard first 7 days of simulation as burn-in
+  initial_inventory_method: average_daily_demand
+  initial_inventory_days: 3        # Start with 3 days of average demand
+  backorder_allowed: false         # Unfulfilled demand is lost (no backorders)
+  substitution_rate: 0.0           # No demand substitution modeled
+
+  cost_weights:
+    description: "Relative weights for cost components in total-cost optimization"
+    lost_sales: 1.0
+    waste: 1.0
+    holding: 1.0
+    emergency: 1.0
+
+# ----------------------------------------------------------------------------
+# Version History
+# ----------------------------------------------------------------------------
+changelog:
+  - version: "0.1.0"
+    date: "2026-07-16"
+    author: "FreshFlow AI Team"
+    changes:
+      - "Initial supplier policy simulation config"
+      - "Three delivery schedule templates"
+      - "Four replenishment policies (lean, conservative, balanced, aggressive)"
+      - "What-if simulation parameters"

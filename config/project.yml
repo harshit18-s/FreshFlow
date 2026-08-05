@@ -1,0 +1,262 @@
+# ============================================================================
+# FreshFlow AI — Master Project Configuration
+# ============================================================================
+# This is the central configuration file for the FreshFlow AI project.
+# All pipeline components, ML training scripts, and dashboard code should
+# read parameters from this file rather than hardcoding values.
+#
+# Owner:         Project Lead
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+project:
+  name: "FreshFlow AI"
+  version: "0.1.0"
+  description: >
+    Stockout-aware retail decision-intelligence platform.
+    Detects stockouts, recovers censored demand, forecasts future demand,
+    predicts stockout risk, and recommends replenishment/markdown actions.
+  repository: "https://github.com/freshflow-ai/freshflow-ai"
+  license: "MIT"
+
+# ----------------------------------------------------------------------------
+# Dataset
+# ----------------------------------------------------------------------------
+dataset:
+  name: "FreshRetailNet-50K"
+  source: "Kaggle / synthetic retail"
+  format: csv
+  expected_daily_rows: 4_850_000     # ~4.85 million
+  expected_hourly_rows: 77_600_000   # ~77.6 million (operational hours only)
+
+  dimensions:
+    cities: 18
+    stores: 898
+    products: 865
+    days: 90                          # Approximate
+
+  raw_data_path: "data/raw/"
+  description: >
+    Synthetic retail dataset with daily sales, hourly breakdowns,
+    stockout flags, discounts, weather, and store-level transaction metrics.
+    All sales values are normalized (not real units or currency).
+
+# ----------------------------------------------------------------------------
+# Operational Hours
+# ----------------------------------------------------------------------------
+operational_hours:
+  start: 6          # 06:00 (inclusive)
+  end: 22           # 22:00 (exclusive — last valid hour is 21)
+  hours_per_day: 16
+  description: >
+    All stores are assumed to operate from 06:00 to 22:00.
+    Hours outside this range are excluded from all calculations.
+
+# ----------------------------------------------------------------------------
+# Date Split Policy
+# ----------------------------------------------------------------------------
+date_split:
+  method: temporal
+  description: >
+    Data is split chronologically — no random shuffling.
+    Train on earlier dates, validate on middle dates, test on latest dates.
+
+  train:
+    fraction: 0.70
+    description: "First 70% of dates (chronologically)"
+
+  validation:
+    fraction: 0.15
+    description: "Next 15% of dates"
+
+  test:
+    fraction: 0.15
+    description: "Final 15% of dates"
+
+  embargo_days: 1
+  embargo_description: >
+    1-day gap between train/validation and validation/test boundaries
+    to prevent look-ahead leakage from lagged features.
+
+# ----------------------------------------------------------------------------
+# Model Registry
+# ----------------------------------------------------------------------------
+model_registry:
+  backend: mlflow
+  tracking_uri: "http://mlflow:5000"
+  artifact_location: "s3://freshflow/mlflow/"
+
+  models:
+    demand_recovery:
+      name: "freshflow-demand-recovery"
+      description: "Recovers censored demand during stockout hours"
+      type: regression
+      primary_metric: rmse
+      secondary_metrics: [mae, r2]
+
+    demand_forecaster:
+      name: "freshflow-demand-forecaster"
+      description: "Multi-horizon quantile demand forecast"
+      type: quantile_regression
+      primary_metric: wape
+      secondary_metrics: [bias, p90_coverage, pinball_loss]
+      horizons: [1, 4, 8, 12, 24]
+      quantiles: [0.10, 0.25, 0.50, 0.75, 0.90]
+
+    stockout_classifier:
+      name: "freshflow-stockout-classifier"
+      description: "Predicts probability of stockout in future hours"
+      type: binary_classification
+      primary_metric: pr_auc
+      secondary_metrics: [precision, recall, f1, roc_auc]
+      prediction_horizons: [4, 8, 12, 24]
+
+    recommendation_engine:
+      name: "freshflow-recommendation-engine"
+      description: "Generates actionable replenishment/markdown recommendations"
+      type: rule_based_with_ml_inputs
+      primary_metric: recommendation_coverage
+      secondary_metrics: [urgent_count, action_distribution]
+
+# ----------------------------------------------------------------------------
+# Quality Thresholds
+# ----------------------------------------------------------------------------
+quality_thresholds:
+  description: >
+    Minimum acceptable performance thresholds. Models that fail these
+    gates should not be promoted to production.
+
+  data_quality:
+    max_rejection_rate: 0.001       # 0.1% of rows
+    max_null_rate_critical: 0.0     # 0% nulls in primary key columns
+    max_null_rate_optional: 0.05    # 5% nulls in optional columns
+    pipeline_freshness_hours: 4     # Pipeline must complete within 4 hours
+
+  demand_forecaster:
+    max_wape: 0.30                  # 30% — daily aggregate
+    max_hourly_wape: 0.45           # 45% — hourly level
+    max_bias_abs: 0.05              # ±5%
+    min_p90_coverage: 0.85          # P90 quantile should cover ≥85% of actuals
+    max_p90_coverage: 0.95          # ... and ≤95% (avoid excessive conservatism)
+    min_fva: 0.0                    # Must beat baseline (FVA > 0%)
+
+  stockout_classifier:
+    min_pr_auc: 0.35                # Minimum PR-AUC (accounting for class imbalance)
+    min_precision_at_threshold: 0.55  # At chosen operating threshold
+    min_recall_at_threshold: 0.40
+
+  recommendations:
+    min_coverage: 0.95              # 95% of at-risk items must receive a recommendation
+    max_false_alarm_rate: 0.40      # At most 40% of alerts should be false positives
+
+  model_drift:
+    wape_degradation_factor: 1.20   # Flag drift if WAPE > 1.2× training baseline
+    bias_abs_max: 0.10              # Flag drift if |bias| > 10%
+    evaluation_window_days: 7       # Rolling 7-day evaluation window
+
+# ----------------------------------------------------------------------------
+# Docker Profiles
+# ----------------------------------------------------------------------------
+docker:
+  compose_file: "docker-compose.yml"
+
+  profiles:
+
+    core:
+      description: "Essential services for development and testing"
+      services:
+        - postgres
+        - minio
+        - mlflow
+        - airflow-webserver
+        - airflow-scheduler
+        - streamlit
+        - dbt
+        - fastapi
+
+    bigdata:
+      description: "Apache Spark cluster for large-scale transformations"
+      services:
+        - spark-master
+        - spark-worker
+
+    streaming:
+      description: "Kafka ecosystem for replay streaming simulation"
+      services:
+        - kafka
+        - zookeeper
+        - kafka-ui
+
+    monitoring:
+      description: "Observability stack for metrics and alerting"
+      services:
+        - prometheus
+        - grafana
+
+# ----------------------------------------------------------------------------
+# Storage
+# ----------------------------------------------------------------------------
+storage:
+  object_store:
+    type: minio
+    endpoint: "http://minio:9000"
+    access_key_env: "MINIO_ACCESS_KEY"
+    secret_key_env: "MINIO_SECRET_KEY"
+    buckets:
+      data: "freshflow"
+      mlflow: "freshflow"
+
+  paths:
+    bronze: "s3://freshflow/bronze/"
+    silver_daily: "s3://freshflow/silver/daily/"
+    silver_hourly: "s3://freshflow/silver/hourly/"
+    gold: "s3://freshflow/gold/"
+    mlflow_artifacts: "s3://freshflow/mlflow/"
+
+  database:
+    type: postgresql
+    host: postgres
+    port: 5432
+    database: freshflow
+    schema_gold: gold
+    schema_staging: staging
+    schema_metadata: metadata
+
+# ----------------------------------------------------------------------------
+# Feature Engineering
+# ----------------------------------------------------------------------------
+features:
+  cyclical_encoding:
+    hour:
+      period: 24
+      method: sin_cos
+    day_of_week:
+      period: 7
+      method: sin_cos
+
+  lag_features:
+    windows: [1, 2, 3, 7, 14]
+    aggregations: [mean, std, min, max]
+    target_column: sale_amount
+
+  rolling_features:
+    windows: [3, 7, 14, 28]
+    aggregations: [mean, std]
+    target_column: sale_amount
+
+# ----------------------------------------------------------------------------
+# Version History
+# ----------------------------------------------------------------------------
+changelog:
+  - version: "0.1.0"
+    date: "2026-07-16"
+    author: "FreshFlow AI Team"
+    changes:
+      - "Initial project configuration"
+      - "Dataset metadata and operational parameters"
+      - "Date split policy (70/15/15 temporal)"
+      - "Model registry definitions"
+      - "Quality threshold gates"
+      - "Docker profile definitions"
+      - "Storage layout (MinIO + PostgreSQL)"

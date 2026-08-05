@@ -1,0 +1,70 @@
+# ============================================================================
+# FreshFlow AI — Development Environment Configuration
+# ============================================================================
+
+environment: development
+debug: true
+
+# ---------- Database ---------------------------------------------------------
+database:
+  host: localhost
+  port: 5432
+  name: freshflow_db
+  user: freshflow_admin
+  pool_size: 5
+  max_overflow: 10
+  echo_sql: true
+
+# ---------- Object Storage (MinIO) ------------------------------------------
+object_storage:
+  endpoint: http://localhost:9000
+  use_ssl: false
+  buckets:
+    bronze: freshflow-bronze
+    silver: freshflow-silver
+    gold: freshflow-gold
+    artifacts: mlflow-artifacts
+
+# ---------- MLflow -----------------------------------------------------------
+mlflow:
+  tracking_uri: http://localhost:5000
+  experiment_name: freshflow-dev
+  registry_uri: http://localhost:5000
+  log_models: true
+
+# ---------- Airflow ----------------------------------------------------------
+airflow:
+  webserver_url: http://localhost:8080
+  dag_schedule_interval: "@daily"
+
+# ---------- API --------------------------------------------------------------
+api:
+  host: 0.0.0.0
+  port: 8000
+  reload: true
+  workers: 1
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8501"
+
+# ---------- Data Pipeline ----------------------------------------------------
+pipeline:
+  batch_size: 10000
+  max_retries: 3
+  retry_delay_seconds: 5
+  data_quality_threshold: 0.95
+  sample_fraction: 0.1         # use 10% sample in dev for speed
+
+# ---------- ML ---------------------------------------------------------------
+ml:
+  random_seed: 42
+  test_size: 0.2
+  cv_folds: 3                  # fewer folds in dev for speed
+  early_stopping_rounds: 50
+  hyperparameter_trials: 20    # reduced in dev
+
+# ---------- Logging ----------------------------------------------------------
+logging:
+  level: DEBUG
+  format: console              # human-readable in dev
+  correlation_tracking: true

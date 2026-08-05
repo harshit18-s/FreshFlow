@@ -1,0 +1,224 @@
+# ============================================================================
+# FreshFlow AI — Data Contract: Hourly (Silver)
+# ============================================================================
+# Dataset:       silver_hourly
+# Grain:         One row per store × product × hour (operational hours only)
+# Owner:         Data Engineering
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+contract:
+  name: hourly_silver
+  description: >
+    Schema and validation rules for the Silver hourly table — produced by
+    exploding the 24-element arrays from the daily source into individual
+    hourly rows, filtered to operational hours (06:00–22:00).
+  dataset: silver_hourly
+  version: "0.1.0"
+
+# ----------------------------------------------------------------------------
+# Grain
+# ----------------------------------------------------------------------------
+grain:
+  description: "One row per store × product × operational hour"
+  keys:
+    - store_id
+    - product_id
+    - dt
+    - hour
+  operational_hours:
+    start: 6   # inclusive
+    end: 22    # exclusive (last valid hour index is 21)
+    count: 16  # hours per day
+
+# ----------------------------------------------------------------------------
+# Primary Key
+# ----------------------------------------------------------------------------
+primary_key:
+  - store_id
+  - product_id
+  - dt
+  - hour
+
+# ----------------------------------------------------------------------------
+# Required Columns
+# ----------------------------------------------------------------------------
+required_columns:
+
+  - name: store_id
+    type: integer
+    nullable: false
+    description: "Store identifier"
+
+  - name: product_id
+    type: integer
+    nullable: false
+    description: "Product/SKU identifier"
+
+  - name: city_id
+    type: integer
+    nullable: false
+    description: "City identifier"
+
+  - name: dt
+    type: date
+    nullable: false
+    description: "Observation date"
+
+  - name: hour
+    type: integer
+    nullable: false
+    description: "Hour of day (6–21, operational hours only)"
+
+  - name: event_timestamp
+    type: timestamp
+    nullable: false
+    description: "Full datetime combining dt and hour"
+
+  - name: sale_amount
+    type: float
+    nullable: false
+    description: "Sales in this hour (normalized)"
+
+  - name: discount_factor
+    type: float
+    nullable: false
+    description: "Discount factor (1.0 = no discount, 0.9 = 10% off)"
+
+  - name: is_stockout
+    type: boolean
+    nullable: false
+    description: "Whether product was stocked out in this hour"
+
+  - name: avg_receipt_amount
+    type: float
+    nullable: false
+    description: "Store-level average receipt (daily, repeated per hour)"
+
+  - name: avg_discount_amount
+    type: float
+    nullable: false
+    description: "Store-level average discount (daily, repeated per hour)"
+
+  - name: weather_main
+    type: string
+    nullable: false
+    description: "Weather condition (daily, repeated per hour)"
+
+  - name: avg_temperature
+    type: float
+    nullable: false
+    description: "Average temperature in °C (daily, repeated per hour)"
+
+  - name: avg_humidity
+    type: float
+    nullable: false
+    description: "Average humidity % (daily, repeated per hour)"
+
+  - name: avg_wind_level
+    type: float
+    nullable: false
+    description: "Average wind level (daily, repeated per hour)"
+
+  - name: day_of_week
+    type: integer
+    nullable: false
+    description: "Day of week (0=Monday, 6=Sunday)"
+
+  - name: is_weekend
+    type: boolean
+    nullable: false
+    description: "True if Saturday or Sunday"
+
+  - name: hour_sin
+    type: float
+    nullable: false
+    description: "Sine cyclical encoding of hour: sin(2π × hour / 24)"
+
+  - name: hour_cos
+    type: float
+    nullable: false
+    description: "Cosine cyclical encoding of hour: cos(2π × hour / 24)"
+
+  - name: _batch_id
+    type: string
+    nullable: false
+    description: "Ingestion batch identifier (inherited from Bronze)"
+
+# ----------------------------------------------------------------------------
+# Validation Rules
+# ----------------------------------------------------------------------------
+validation_rules:
+
+  # --- Primary key uniqueness ---
+  - rule: unique_composite_key
+    columns: [store_id, product_id, dt, hour]
+    description: "Each store × product × date × hour must be unique"
+    severity: error
+
+  # --- Hour range ---
+  - rule: value_range
+    column: hour
+    min_value: 6
+    max_value: 21
+    description: "Hour must be in operational range [6, 21]"
+    severity: error
+
+  # --- Non-negative hourly sales ---
+  - rule: non_negative
+    column: sale_amount
+    description: "Hourly sale_amount must be >= 0"
+    severity: error
+
+  # --- Discount factor range ---
+  - rule: value_range
+    column: discount_factor
+    min_value: 0.0
+    max_value: 1.0
+    description: "discount_factor must be between 0.0 and 1.0"
+    severity: error
+
+  # --- Day of week range ---
+  - rule: value_range
+    column: day_of_week
+    min_value: 0
+    max_value: 6
+    description: "day_of_week must be 0 (Monday) through 6 (Sunday)"
+    severity: error
+
+  # --- Cyclical encoding bounds ---
+  - rule: value_range
+    column: hour_sin
+    min_value: -1.0
+    max_value: 1.0
+    description: "Sine encoding must be in [-1, 1]"
+    severity: error
+
+  - rule: value_range
+    column: hour_cos
+    min_value: -1.0
+    max_value: 1.0
+    description: "Cosine encoding must be in [-1, 1]"
+    severity: error
+
+  # --- Event timestamp consistency ---
+  - rule: timestamp_consistency
+    columns: [dt, hour, event_timestamp]
+    description: "event_timestamp must equal dt combined with hour (e.g., 2025-01-15 + hour 8 → 2025-01-15T08:00:00)"
+    severity: error
+
+  # --- Rows per day per store-product ---
+  - rule: expected_row_count
+    group_by: [store_id, product_id, dt]
+    expected_count: 16
+    description: "Each store × product × day should have exactly 16 hourly rows (hours 6–21)"
+    severity: warning
+
+# ----------------------------------------------------------------------------
+# SLA
+# ----------------------------------------------------------------------------
+sla:
+  max_rejection_rate: 0.001
+  expected_row_amplification: 16  # 1 daily row → 16 hourly rows
+  freshness_hours: 24

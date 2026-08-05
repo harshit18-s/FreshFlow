@@ -1,0 +1,261 @@
+# ============================================================================
+# FreshFlow AI — Data Contract: Prediction Output
+# ============================================================================
+# Covers:        Demand forecasts + Stockout risk predictions
+# Grain:         One row per store × product × hour × model × horizon
+# Owner:         ML Engineering / Data Science
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+contract:
+  name: prediction_output
+  description: >
+    Schema and validation rules for ML prediction outputs. Covers both
+    demand forecasts (with quantile predictions) and stockout risk scores.
+    These outputs are written to Gold fact tables and consumed by the
+    recommendation engine, dashboards, and API.
+  version: "0.1.0"
+
+# ============================================================================
+# DEMAND FORECAST
+# ============================================================================
+demand_forecast:
+
+  dataset: fact_forecast
+  grain: "One row per store × product × target hour × model × horizon"
+
+  primary_key:
+    - store_id
+    - product_id
+    - dt
+    - hour
+    - model_name
+    - horizon_hours
+
+  required_columns:
+
+    - name: store_id
+      type: integer
+      nullable: false
+
+    - name: product_id
+      type: integer
+      nullable: false
+
+    - name: dt
+      type: date
+      nullable: false
+      description: "Target date being forecasted"
+
+    - name: hour
+      type: integer
+      nullable: false
+      description: "Target hour being forecasted (6–21)"
+
+    - name: model_name
+      type: string
+      nullable: false
+      description: "Registered model name from MLflow"
+
+    - name: horizon_hours
+      type: integer
+      nullable: false
+      description: "Forecast horizon in hours (e.g., 1, 4, 8, 12, 24)"
+
+    - name: forecast_median
+      type: float
+      nullable: false
+      description: "Point forecast — 50th percentile (Q50)"
+
+    - name: forecast_q10
+      type: float
+      nullable: false
+      description: "10th percentile forecast (lower bound)"
+
+    - name: forecast_q25
+      type: float
+      nullable: false
+      description: "25th percentile forecast"
+
+    - name: forecast_q75
+      type: float
+      nullable: false
+      description: "75th percentile forecast"
+
+    - name: forecast_q90
+      type: float
+      nullable: false
+      description: "90th percentile forecast (upper bound)"
+
+    - name: scored_at
+      type: timestamp
+      nullable: false
+      description: "Timestamp when prediction was generated"
+
+  validation_rules:
+
+    # --- Quantile ordering (critical invariant) ---
+    - rule: quantile_ordering
+      description: >
+        Quantile predictions must be monotonically non-decreasing:
+        Q10 ≤ Q25 ≤ Q50 (median) ≤ Q75 ≤ Q90.
+        Violation indicates a model bug or post-processing error.
+      condition: "forecast_q10 <= forecast_q25 <= forecast_median <= forecast_q75 <= forecast_q90"
+      severity: error
+
+    # --- Non-negative forecasts ---
+    - rule: non_negative
+      columns:
+        - forecast_q10
+        - forecast_q25
+        - forecast_median
+        - forecast_q75
+        - forecast_q90
+      description: "All quantile forecasts must be >= 0 (demand cannot be negative)"
+      severity: error
+
+    # --- Hour range ---
+    - rule: value_range
+      column: hour
+      min_value: 6
+      max_value: 21
+      description: "Target hour must be within operational range"
+      severity: error
+
+    # --- Horizon values ---
+    - rule: accepted_values
+      column: horizon_hours
+      allowed_values: [1, 2, 4, 8, 12, 24, 48, 168]
+      description: "Horizon must be one of the defined forecast horizons"
+      severity: warning
+
+    # --- Prediction interval width sanity ---
+    - rule: prediction_interval_width
+      description: >
+        The 80% prediction interval (Q90 - Q10) should not be excessively wide.
+        If Q90 - Q10 > 10 × forecast_median, flag as suspicious (possible model instability).
+      condition: "(forecast_q90 - forecast_q10) <= 10 * forecast_median WHERE forecast_median > 0"
+      severity: warning
+
+    # --- Freshness ---
+    - rule: freshness
+      column: scored_at
+      max_age_hours: 24
+      description: "Predictions should not be older than 24 hours"
+      severity: warning
+
+# ============================================================================
+# STOCKOUT RISK
+# ============================================================================
+stockout_risk:
+
+  dataset: fact_stockout_risk
+  grain: "One row per store × product × target hour × model"
+
+  primary_key:
+    - store_id
+    - product_id
+    - dt
+    - hour
+    - model_name
+
+  required_columns:
+
+    - name: store_id
+      type: integer
+      nullable: false
+
+    - name: product_id
+      type: integer
+      nullable: false
+
+    - name: dt
+      type: date
+      nullable: false
+      description: "Target date"
+
+    - name: hour
+      type: integer
+      nullable: false
+      description: "Target hour (6–21)"
+
+    - name: model_name
+      type: string
+      nullable: false
+      description: "Registered classifier model name"
+
+    - name: stockout_probability
+      type: float
+      nullable: false
+      description: "Predicted probability of stockout (0.0–1.0)"
+
+    - name: risk_tier
+      type: string
+      nullable: false
+      description: "Categorized risk level"
+
+    - name: is_alert
+      type: boolean
+      nullable: false
+      description: "Whether probability exceeds the alert threshold"
+
+    - name: scored_at
+      type: timestamp
+      nullable: false
+      description: "Timestamp when prediction was generated"
+
+  validation_rules:
+
+    # --- Probability range ---
+    - rule: value_range
+      column: stockout_probability
+      min_value: 0.0
+      max_value: 1.0
+      description: "Stockout probability must be a valid probability [0, 1]"
+      severity: error
+
+    # --- Risk tier accepted values ---
+    - rule: accepted_values
+      column: risk_tier
+      allowed_values: ["low", "medium", "high", "critical"]
+      description: "risk_tier must be one of the defined levels"
+      severity: error
+
+    # --- Risk tier consistency with probability ---
+    - rule: tier_probability_consistency
+      description: >
+        Risk tier must be consistent with stockout_probability:
+          low:      [0.0, 0.25)
+          medium:   [0.25, 0.50)
+          high:     [0.50, 0.75)
+          critical: [0.75, 1.0]
+      severity: error
+
+    # --- Alert consistency ---
+    - rule: alert_consistency
+      description: >
+        is_alert must be TRUE when stockout_probability >= alert_threshold
+        (default threshold: 0.50). Must be FALSE otherwise.
+      severity: error
+
+    # --- Hour range ---
+    - rule: value_range
+      column: hour
+      min_value: 6
+      max_value: 21
+      severity: error
+
+# ============================================================================
+# SLA
+# ============================================================================
+sla:
+  demand_forecast:
+    max_missing_rate: 0.01   # At most 1% of expected store×product×hour combinations may be missing
+    max_stale_hours: 24
+    min_coverage: 0.95       # At least 95% of active products must have forecasts
+
+  stockout_risk:
+    max_missing_rate: 0.01
+    max_stale_hours: 24
+    min_coverage: 0.95

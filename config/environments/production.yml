@@ -1,0 +1,69 @@
+# ============================================================================
+# FreshFlow AI — Production Environment Configuration
+# ============================================================================
+
+environment: production
+debug: false
+
+# ---------- Database ---------------------------------------------------------
+database:
+  host: ${POSTGRES_HOST}
+  port: 5432
+  name: ${POSTGRES_DB}
+  user: ${POSTGRES_USER}
+  pool_size: 20
+  max_overflow: 30
+  echo_sql: false
+
+# ---------- Object Storage ---------------------------------------------------
+object_storage:
+  endpoint: ${MINIO_ENDPOINT}
+  use_ssl: true
+  buckets:
+    bronze: freshflow-bronze
+    silver: freshflow-silver
+    gold: freshflow-gold
+    artifacts: mlflow-artifacts
+
+# ---------- MLflow -----------------------------------------------------------
+mlflow:
+  tracking_uri: ${MLFLOW_TRACKING_URI}
+  experiment_name: freshflow-prod
+  registry_uri: ${MLFLOW_TRACKING_URI}
+  log_models: true
+
+# ---------- Airflow ----------------------------------------------------------
+airflow:
+  webserver_url: ${AIRFLOW_WEBSERVER_URL}
+  dag_schedule_interval: "@daily"
+
+# ---------- API --------------------------------------------------------------
+api:
+  host: 0.0.0.0
+  port: 8000
+  reload: false
+  workers: 4
+  cors_origins:
+    - "https://freshflow.ai"
+
+# ---------- Data Pipeline ----------------------------------------------------
+pipeline:
+  batch_size: 50000
+  max_retries: 5
+  retry_delay_seconds: 30
+  data_quality_threshold: 0.99
+  sample_fraction: 1.0         # full data in production
+
+# ---------- ML ---------------------------------------------------------------
+ml:
+  random_seed: 42
+  test_size: 0.2
+  cv_folds: 5
+  early_stopping_rounds: 100
+  hyperparameter_trials: 100
+
+# ---------- Logging ----------------------------------------------------------
+logging:
+  level: INFO
+  format: json                 # structured JSON in production
+  correlation_tracking: true

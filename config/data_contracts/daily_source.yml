@@ -1,0 +1,238 @@
+# ============================================================================
+# FreshFlow AI — Data Contract: Daily Source
+# ============================================================================
+# Dataset:       FreshRetailNet-50K (daily grain)
+# Grain:         One row per store × product × day
+# Owner:         Data Engineering
+# Version:       0.1.0
+# Last Updated:  2026-07-16
+# ============================================================================
+
+contract:
+  name: daily_source
+  description: >
+    Schema and validation rules for the raw FreshRetailNet-50K daily CSV files.
+    This contract is enforced at ingestion time (CSV → Bronze).
+  dataset: freshretail_daily
+  version: "0.1.0"
+
+# ----------------------------------------------------------------------------
+# Primary Key
+# ----------------------------------------------------------------------------
+primary_key:
+  - store_id
+  - product_id
+  - dt
+
+# ----------------------------------------------------------------------------
+# Required Columns
+# ----------------------------------------------------------------------------
+required_columns:
+
+  - name: city_id
+    type: integer
+    nullable: false
+    description: "City identifier (1–18)"
+
+  - name: store_id
+    type: integer
+    nullable: false
+    description: "Store identifier (1–898)"
+
+  - name: product_id
+    type: integer
+    nullable: false
+    description: "Product/SKU identifier (1–865)"
+
+  - name: dt
+    type: string
+    nullable: false
+    description: "Observation date in YYYY-MM-DD format"
+
+  - name: sale_amount
+    type: float
+    nullable: false
+    description: "Total daily sales quantity (normalized, not real units)"
+
+  - name: sale_amount_by_hours
+    type: string
+    nullable: false
+    description: "JSON-encoded array of 24 floats — hourly sales breakdown"
+
+  - name: discount_by_hours
+    type: string
+    nullable: false
+    description: "JSON-encoded array of 24 floats — hourly discount factors (1.0 = no discount)"
+
+  - name: is_stockout_by_hours
+    type: string
+    nullable: false
+    description: "JSON-encoded array of 24 integers (0 or 1) — hourly stockout flags"
+
+  - name: avg_receipt_amount
+    type: float
+    nullable: false
+    description: "Average transaction receipt amount at this store on this day"
+
+  - name: avg_discount_amount
+    type: float
+    nullable: false
+    description: "Average discount amount across transactions at this store on this day"
+
+  - name: weather_main
+    type: string
+    nullable: false
+    description: "Primary weather condition (e.g., Clear, Rain, Clouds, Snow)"
+
+  - name: avg_temperature
+    type: float
+    nullable: false
+    description: "Average daily temperature in degrees Celsius"
+
+  - name: avg_humidity
+    type: float
+    nullable: false
+    description: "Average daily humidity percentage"
+
+  - name: avg_wind_level
+    type: float
+    nullable: false
+    description: "Average daily wind level (normalized, unitless)"
+
+# ----------------------------------------------------------------------------
+# Validation Rules
+# ----------------------------------------------------------------------------
+validation_rules:
+
+  # --- Primary key uniqueness ---
+  - rule: unique_composite_key
+    columns: [store_id, product_id, dt]
+    description: "Each store × product × day combination must be unique"
+    severity: error
+
+  # --- Parseable date ---
+  - rule: parseable_date
+    column: dt
+    format: "%Y-%m-%d"
+    description: "dt must be a valid date in YYYY-MM-DD format"
+    severity: error
+
+  # --- Non-negative sales ---
+  - rule: non_negative
+    column: sale_amount
+    description: "sale_amount must be >= 0"
+    severity: error
+
+  # --- Array length: sale_amount_by_hours ---
+  - rule: json_array_length
+    column: sale_amount_by_hours
+    expected_length: 24
+    element_type: float
+    description: "sale_amount_by_hours must parse to an array of exactly 24 floats"
+    severity: error
+
+  # --- Array length: discount_by_hours ---
+  - rule: json_array_length
+    column: discount_by_hours
+    expected_length: 24
+    element_type: float
+    description: "discount_by_hours must parse to an array of exactly 24 floats"
+    severity: error
+
+  # --- Array length: is_stockout_by_hours ---
+  - rule: json_array_length
+    column: is_stockout_by_hours
+    expected_length: 24
+    element_type: integer
+    description: "is_stockout_by_hours must parse to an array of exactly 24 integers"
+    severity: error
+
+  # --- Discount factor range ---
+  - rule: array_element_range
+    column: discount_by_hours
+    min_value: 0.0
+    max_value: 1.0
+    description: "Each discount factor must be between 0.0 and 1.0 (inclusive)"
+    severity: error
+
+  # --- Stockout flag values ---
+  - rule: array_element_values
+    column: is_stockout_by_hours
+    allowed_values: [0, 1]
+    description: "Each stockout flag must be exactly 0 or 1"
+    severity: error
+
+  # --- Hourly sales non-negative ---
+  - rule: array_element_range
+    column: sale_amount_by_hours
+    min_value: 0.0
+    max_value: null  # no upper bound
+    description: "Each hourly sale_amount element must be >= 0"
+    severity: error
+
+  # --- City ID range ---
+  - rule: value_range
+    column: city_id
+    min_value: 1
+    max_value: 18
+    description: "city_id must be between 1 and 18"
+    severity: warning
+
+  # --- Store ID range ---
+  - rule: value_range
+    column: store_id
+    min_value: 1
+    max_value: 898
+    description: "store_id must be between 1 and 898"
+    severity: warning
+
+  # --- Product ID range ---
+  - rule: value_range
+    column: product_id
+    min_value: 1
+    max_value: 865
+    description: "product_id must be between 1 and 865"
+    severity: warning
+
+  # --- Temperature sanity check ---
+  - rule: value_range
+    column: avg_temperature
+    min_value: -50.0
+    max_value: 60.0
+    description: "avg_temperature should be within plausible Celsius range"
+    severity: warning
+
+  # --- Humidity sanity check ---
+  - rule: value_range
+    column: avg_humidity
+    min_value: 0.0
+    max_value: 100.0
+    description: "avg_humidity should be between 0 and 100"
+    severity: warning
+
+  # --- Weather accepted values ---
+  - rule: accepted_values
+    column: weather_main
+    allowed_values:
+      - "Clear"
+      - "Clouds"
+      - "Rain"
+      - "Snow"
+      - "Drizzle"
+      - "Mist"
+      - "Fog"
+      - "Haze"
+      - "Thunderstorm"
+      - "Smoke"
+      - "Dust"
+      - "Squall"
+    description: "weather_main must be one of the known weather categories"
+    severity: warning
+
+# ----------------------------------------------------------------------------
+# SLA
+# ----------------------------------------------------------------------------
+sla:
+  max_rejection_rate: 0.001  # 0.1% — rows failing validation
+  max_null_rate: 0.0         # No nulls allowed in required columns
+  freshness_hours: 24        # Data should arrive within 24 hours of observation date
