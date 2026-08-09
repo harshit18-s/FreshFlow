@@ -244,3 +244,5 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 **Built with ❤️ for smarter grocery retail**
 
 </div>
+#   F r e s h F l o w  
+ 

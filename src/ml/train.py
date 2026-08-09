@@ -46,8 +46,8 @@ def load_data():
     FROM gold_gold.fact_sales_hourly f
     JOIN gold_gold.dim_store s ON f.store_id = s.store_id
     WHERE f.observed_sales IS NOT NULL
-    -- Limit rows for fast training in demo
-    LIMIT 10000;
+    -- Scaled training data limit for higher model fidelity
+    LIMIT 50000;
     """
     logger.info("Extracting data from gold.fact_sales_hourly...")
     df = pd.read_sql(query, conn)
@@ -112,9 +112,13 @@ def train_model():
         mae = mean_absolute_error(y_test, preds)
         rmse = np.sqrt(mean_squared_error(y_test, preds))
         r2 = r2_score(y_test, preds)
+        sum_actual = np.sum(np.abs(y_test))
+        wape = (np.sum(np.abs(y_test - preds)) / sum_actual * 100) if sum_actual > 0 else 0.0
+        sum_y = np.sum(y_test)
+        bias = (np.sum(preds - y_test) / sum_y * 100) if sum_y != 0 else 0.0
         
-        logger.info(f"Metrics - MAE: {mae:.2f}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
-        mlflow.log_metrics({"mae": mae, "rmse": rmse, "r2": r2})
+        logger.info(f"Metrics - MAE: {mae:.2f}, RMSE: {rmse:.2f}, R2: {r2:.2f}, WAPE: {wape:.2f}%, Bias: {bias:.2f}%")
+        mlflow.log_metrics({"mae": mae, "rmse": rmse, "r2": r2, "wape": wape, "bias": bias})
         
         # Generate SHAP values for explainability
         logger.info("Generating SHAP values...")

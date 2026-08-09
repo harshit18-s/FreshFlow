@@ -135,3 +135,15 @@ def optimize_order(request: OptimizeRequest):
         salvage_value=request.salvage_value
     )
     return res.__dict__
+
+
+@app.post("/reload-model")
+def reload_model():
+    """Hot-reload the latest trained model from MLflow without restarting the server."""
+    success = load_latest_model()
+    return {
+        "success": success,
+        "model_loaded": model is not None,
+        "message": "Model reloaded successfully" if success else "Reload failed — check MLflow"
+    }
+

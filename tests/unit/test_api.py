@@ -33,3 +33,13 @@ def test_predict_endpoint_model_not_loaded():
     response = client.post("/predict", json=payload)
     # Returns 503 if model is not loaded in memory
     assert response.status_code in [200, 503]
+
+
+def test_reload_model_endpoint():
+    response = client.post("/reload-model")
+    assert response.status_code == 200
+    data = response.json()
+    assert "success" in data
+    assert "model_loaded" in data
+    assert "message" in data
+
