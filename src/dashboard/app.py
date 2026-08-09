@@ -1,7 +1,7 @@
-import sys
 import os
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Ensure workspace root and src/ml are in sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -10,13 +10,13 @@ for p in [str(ROOT_DIR), str(ML_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import streamlit as st
-import requests
-import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
+import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import psycopg2
+import requests
+import streamlit as st
 
 try:
     from optimizer import InventoryOptimizer
@@ -60,7 +60,7 @@ st.markdown("""
         color: var(--text-white) !important;
         font-family: var(--font-family) !important;
     }
-    
+
     [data-testid="stSidebar"] {
         background-color: #0F172A !important;
         border-right: 1px solid var(--border-glass) !important;
@@ -278,7 +278,7 @@ def _load_products():
                 unit_costs.append(pcost)
                 retail_prices.append(pprice)
                 display_names.append(f"SKU-{pid} | {pname}")
-            
+
             df["product_name"] = names
             df["category"] = categories
             df["shelf_life_days"] = shelf_lives
@@ -425,7 +425,7 @@ with tab1:
     st.markdown("""
     <div class="ff-explain-box">
       <div class="ff-explain-header">💡 How This Solves Your Problem</div>
-      FreshFlow AI analyzes historical sales, weather, and day-of-week patterns to recommend the 
+      FreshFlow AI analyzes historical sales, weather, and day-of-week patterns to recommend the
       <b>exact number of units</b> to order from suppliers today. You never run out of produce during peak rushes, and zero food rots in dumpsters.
     </div>
     """, unsafe_allow_html=True)
@@ -555,10 +555,10 @@ with tab1:
 
     # High-Contrast Dark Neon Plotly Spline Chart
     st.subheader("📈 Intraday Shelf Inventory & Customer Purchase Curve")
-    
+
     hours = list(range(8, 22))
     hourly_purchases = [max(2, int(expected_sales * (0.04 + 0.08 * np.sin((h - 8) / 13 * np.pi)))) for h in hours]
-    
+
     shelf_stock = []
     current_inv = recommended_order
     for p in hourly_purchases:

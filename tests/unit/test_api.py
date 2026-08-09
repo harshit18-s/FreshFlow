@@ -2,8 +2,8 @@
 Unit tests for FastAPI Service in FreshFlow AI.
 """
 
-import pytest
 from fastapi.testclient import TestClient
+
 from src.api.main import app
 
 client = TestClient(app)

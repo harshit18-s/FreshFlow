@@ -111,6 +111,9 @@ select = [
 ignore = [
     "E501",   # line too long (handled by black)
     "B008",   # do not perform function calls in argument defaults
+    "E402",   # module level import not at top of file (sys.path manipulation)
+    "N806",   # variable in function should be lowercase (standard ML X matrix notation)
+    "RUF001", # ambiguous unicode characters (UI emojis and greek symbols)
 ]
 
 [tool.ruff.lint.isort]

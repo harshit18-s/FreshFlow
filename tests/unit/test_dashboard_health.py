@@ -2,8 +2,10 @@
 Unit tests for Dashboard API Health & Simulation detection logic.
 """
 
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 import requests
+
 
 def check_api_status():
     """Helper function logic extracted from dashboard app.py."""

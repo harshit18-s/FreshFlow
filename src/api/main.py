@@ -1,9 +1,11 @@
 import os
+
 import mlflow
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
 try:
     from prometheus_fastapi_instrumentator import Instrumentator
     HAS_PROMETHEUS = True
@@ -35,20 +37,20 @@ def load_latest_model():
         if not experiment:
             print("Experiment not found.")
             return False
-            
+
         runs = mlflow.search_runs(
             experiment_ids=[experiment.experiment_id],
             order_by=["metrics.rmse ASC"],
             max_results=1
         )
-        
+
         if runs.empty:
             print("No runs found.")
             return False
-            
+
         best_run_id = runs.iloc[0].run_id
         model_uri = f"runs:/{best_run_id}/model"
-        
+
         print(f"Loading model from {model_uri}...")
         model = mlflow.lightgbm.load_model(model_uri)
         return True
@@ -84,7 +86,7 @@ def health_check():
 def predict(request: ForecastRequest):
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded.")
-    
+
     input_data = pd.DataFrame([{
         "store_id": request.store_id,
         "product_id": request.product_id,
@@ -96,19 +98,19 @@ def predict(request: ForecastRequest):
         "day": request.day,
         "hour": request.hour
     }])
-    
+
     # Apply categorical types for LightGBM
     categorical_cols = ['store_id', 'product_id', 'store_cluster', 'volume_band']
     for col in categorical_cols:
         input_data[col] = input_data[col].astype('category')
-        
+
     try:
         prediction = model.predict(input_data)[0]
         # Demand cannot be negative
         prediction = max(0.0, float(prediction))
         return ForecastResponse(forecasted_demand=prediction)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 class OptimizeRequest(BaseModel):
     mean_demand: float

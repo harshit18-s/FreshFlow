@@ -5,10 +5,10 @@ Computes cost-optimal reorder quantities (Q*) for perishable retail goods using
 asymmetric cost functions, Newsvendor critical fractile optimization, and perishability risk scores.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.stats import norm
-from dataclasses import dataclass
-from typing import Dict, Any
 
 
 @dataclass
@@ -42,7 +42,7 @@ class InventoryOptimizer:
     def calculate_optimal_order(
         self,
         mean_demand: float,
-        std_demand: float = None,
+        std_demand: float | None = None,
         unit_price: float = 10.0,
         unit_cost: float = 6.0,
         holding_cost: float = 0.5,
@@ -63,7 +63,7 @@ class InventoryOptimizer:
         :param salvage_value: Discount clearance recovery price per unit ($)
         """
         mean_demand = max(0.1, float(mean_demand))
-        
+
         if std_demand is None or std_demand <= 0:
             # Default standard deviation ~ 20% coefficient of variation
             std_demand = max(1.0, mean_demand * 0.20)
@@ -102,7 +102,7 @@ class InventoryOptimizer:
         spoilage_risk_score = float(norm.cdf(z_opt) * (expected_waste_units / max(1, optimal_order_qty))) * 100.0
         spoilage_risk_score = np.clip(spoilage_risk_score, 0.0, 100.0)
 
-        stockout_risk_score = float((1.0 - norm.cdf(z_opt))) * 100.0
+        stockout_risk_score = float(1.0 - norm.cdf(z_opt)) * 100.0
         stockout_risk_score = np.clip(stockout_risk_score, 0.0, 100.0)
 
         return OptimizationResult(

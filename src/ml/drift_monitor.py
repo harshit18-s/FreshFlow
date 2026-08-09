@@ -5,11 +5,11 @@ Monitors statistical distribution shift (Data Drift) and prediction shift (Conce
 between baseline training distributions and live production inference streams.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp
-from dataclasses import dataclass
-from typing import Dict, Any, List
 
 
 @dataclass
@@ -39,7 +39,7 @@ class DriftMonitor:
         """
         baseline = np.asarray(baseline, dtype=float)
         current = np.asarray(current, dtype=float)
-        
+
         # Remove NaNs
         baseline = baseline[~np.isnan(baseline)]
         current = current[~np.isnan(current)]
@@ -118,7 +118,7 @@ class DriftMonitor:
         self,
         baseline_df: pd.DataFrame,
         current_df: pd.DataFrame
-    ) -> List[DriftResult]:
+    ) -> list[DriftResult]:
         """
         Evaluate drift across all matching columns in the dataset.
         """

@@ -3,8 +3,9 @@ ML Pipeline & Feature Engineering Tests.
 """
 
 import pandas as pd
-import pytest
+
 from src.ml.train import preprocess_features
+
 
 def test_preprocess_features():
     raw_df = pd.DataFrame([{
@@ -17,9 +18,9 @@ def test_preprocess_features():
         'store_cluster': 'Cluster B',
         'volume_band': 'Medium'
     }])
-    
+
     X, y = preprocess_features(raw_df)
-    
+
     assert 'year' in X.columns
     assert 'month' in X.columns
     assert 'day' in X.columns
